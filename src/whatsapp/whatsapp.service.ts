@@ -30,6 +30,10 @@ export class WhatsappService {
     }
 
     async sendOtpMessage(userPhoneNumber: string) {
+        const existingToken = this.phoneNumberToTokenMapper.get(userPhoneNumber);
+        if (existingToken) {
+            this.phoneNumberToTokenMapper.delete(userPhoneNumber)
+        }
         const cleanNumber = userPhoneNumber.replace('+', '');
         const otp = await this.generateOtpToken(userPhoneNumber);
         const WAHA_API_URL = this.configService.get<string>('WAHA_API_URL') || "http://localhost:3001";
@@ -81,6 +85,7 @@ export class WhatsappService {
 
             if (otp && String(userOtp) === String(otp)) {
                 this.phoneNumberToTokenMapper.delete(phoneNumber);
+                await this.sendInitialMessage(phoneNumber);
                 return true;
             }
             return false;

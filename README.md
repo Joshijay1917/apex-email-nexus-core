@@ -1,98 +1,67 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Email Nexus Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Email Nexus Backend is the core AI-orchestration engine built with **NestJS**. It manages secure user authentication via Google OAuth, integrates seamlessly with the Gmail API to manage and process incoming emails, and acts as a gateway bridge to **WhatsApp** for real-time AI email summaries, notifications, and interactions.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 🔐 Authentication Details
 
-## Description
+The platform utilizes a dual-authentication strategy combining Google OAuth 2.0 and secure JWT tokens for downstream protected endpoints.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+### Authentication Endpoints
 
-## Project setup
+#### 1. Google OAuth Login
+- **Route:** `GET /auth/google/login`
+- **Protection:** Google Passport Guard
+- **Description:** Initiates the OAuth 2.0 authorization flow with Google. It requests scope permission for profile, email, and Gmail manipulation.
 
-```bash
-$ pnpm install
-```
+#### 2. Google Callback Redirection
+- **Route:** `GET /auth/google/callback`
+- **Description:** The final destination invoked by Google upon successful identity verification. 
+- **Flow:**
+    1. Extracts authorization tokens (AccessToken & RefreshToken).
+    2. Maps the user profile to the internal database (creates if not exists / updates otherwise).
+    3. Issues a secure internal JWT payload.
+    4. Redirects back to the client application deeply (e.g., `http://localhost:8081/onboarding-success?token=<JWT>`) to hydrate the mobile application session.
 
-## Compile and run the project
+---
 
-```bash
-# development
-$ pnpm run start
+## 📱 WhatsApp Setup Details
 
-# watch mode
-$ pnpm run start:dev
+Once authenticated, users must establish a secure active link to their WhatsApp number. This ensures AI-generated content reaches the absolute right device securely.
 
-# production mode
-$ pnpm run start:prod
-```
+### WhatsApp Flow
 
-## Run tests
+1. The user supplies their phone number inside the app.
+2. Backend triggers an encrypted short-lived OTP directly to the user via **WhatsApp WAHA service**.
+3. The user validates the otp received, solidifying the communication link.
+4. Initial conversational bridge opens between the Nexus Agent and the User.
 
-```bash
-# unit tests
-$ pnpm run test
+### WhatsApp & User Onboarding Endpoints
 
-# e2e tests
-$ pnpm run test:e2e
+> All endpoints below require an `Authorization: Bearer <token>` header acquired during the login phase.
 
-# test coverage
-$ pnpm run test:cov
-```
+#### 1. Update & Verify Phone Number
+- **Route:** `PATCH /user/update-phone`
+- **Body:** `{ "phoneNumber": "+1234567890" }`
+- **Action:** Persists the validated string to the user model and dispatches the initial ephemeral 6-digit verification OTP directly to the specified WhatsApp chat.
 
-## Deployment
+#### 2. Resend Verification Code
+- **Route:** `GET /user/resend`
+- **Action:** Identifies user from incoming JWT, invalidates old token maps, and issues a replacement OTP message over WhatsApp.
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+#### 3. Complete OTP Verification
+- **Route:** `POST /user/verify-otp`
+- **Body:** `{ "otp": "123456" }`
+- **Action:** Validates user-submitted string against internal stored JWT claims. On success, initiates the "Welcome to Email Nexus" broadcast on the confirmed WhatsApp channel  and flushes the ephemeral map cache.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+#### 4. Current Identity Retrieval (WhoAmI)
+- **Route:** `GET /user/whoami`
+- **Action:** Returns authenticated current profile metadata. this endpoint is created to validate the user accessToken and give them the profile.
 
-```bash
-$ pnpm install -g @nestjs/mau
-$ mau deploy
-```
+---
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+## 📨 Gmail Integration
 
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+#### Fetch Latest Preview Sync
+- **Route:** `GET /gmail/sync`
+- **Protection:** JWT
+- **Action:** Pulls user's persistent `googleRefreshToken`, negotiates fresh operational credentials, retrieves the latest high-priority inbox snippet deck, and delivers formatting context to the mobile preview stream.

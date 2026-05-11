@@ -81,7 +81,6 @@ export class UserController {
         if (!user) {
             throw new NotFoundException('User not found!')
         }
-        this.whatsappService.sendInitialMessage(user.phoneNumber);
         return { success: true, data: user, message: 'User Details Fetched Successfully!', statusCode: 200 }
     }
 }
