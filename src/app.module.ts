@@ -16,13 +16,12 @@ import { WhatsappModule } from './whatsapp/whatsapp.module';
     UserModule,
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: 'localhost',
-      port: 5432,
-      username: 'postgres',
-      password: 'postgres',
-      database: 'emailnexus',
-      entities: [User],
-      synchronize: true,
+      url: process.env.DATABASE_URI,
+      autoLoadEntities: true,
+      synchronize: false,
+      ssl: {
+        rejectUnauthorized: true
+      }
     }),
     GmailModule,
     WhatsappModule
