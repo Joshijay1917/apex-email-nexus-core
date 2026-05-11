@@ -1,12 +1,13 @@
-import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
+import { Controller, Get, Inject, Req, Res, UseGuards } from '@nestjs/common';
 import { GoogleAuthGuard } from './guards/google-auth/google-auth.guard';
-import { AuthService } from './auth.service';
 import type { Response, Request } from 'express';
+import type { ConfigType } from '@nestjs/config';
+import googleOauthConfig from './config/google-oauth-config';
 
 @Controller('auth/google')
 @UseGuards(GoogleAuthGuard)
 export class AuthController {
-    constructor(private readonly authService: AuthService) { }
+    constructor(@Inject(googleOauthConfig.KEY) private googleConfiguration: ConfigType<typeof googleOauthConfig>) { }
 
     @Get('login')
     async googleAuth(@Req() req: Request) { }
@@ -14,7 +15,7 @@ export class AuthController {
     @Get('callback')
     async googleAuthRedirect(@Req() req: Request, @Res() res: Response) {
         const user = req.user as any;
-        const redirectUrl = `http://localhost:8081/onboarding-success?token=${user.jwt}`;
+        const redirectUrl = `${this.googleConfiguration.applicationRedirectUrl}?token=${user.jwt}`;
         return res.redirect(redirectUrl);
     }
 }
