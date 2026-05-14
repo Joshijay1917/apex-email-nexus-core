@@ -8,21 +8,14 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user/entity/user.entity';
 import { GmailModule } from './gmail/gmail.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { postgresDataSource } from './data-source';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '.env' }),
     AuthModule,
     UserModule,
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URI,
-      autoLoadEntities: true,
-      synchronize: false,
-      ssl: {
-        rejectUnauthorized: true
-      }
-    }),
+    TypeOrmModule.forRoot(postgresDataSource.options),
     GmailModule,
     WhatsappModule
   ],
